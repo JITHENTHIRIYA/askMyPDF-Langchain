@@ -4,8 +4,17 @@ from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain_community.chat_models import ChatOllama
+
+import os
+
 # Load your PDF
-loader = PyPDFLoader("document.pdf")
+# File existence check
+pdf_path = input("Enter the path to your PDF file: ").strip()
+while not os.path.exists(pdf_path):
+    print("File not found. Please enter a valid path.")
+    pdf_path = input("Enter the path to your PDF file: ").strip()
+
+loader = PyPDFLoader(pdf_path)
 pages = loader.load()
 
 # Split into chunks
