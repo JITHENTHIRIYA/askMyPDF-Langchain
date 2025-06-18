@@ -70,7 +70,7 @@ if uploaded_file is not None:
         with st.spinner("Thinking..."):
             answer = qa_chain.invoke(query)
         st.success("💡 Answer:")
-        st.write(answer)
+        st.write(answer["result"] if isinstance(answer, dict) and "result" in answer else answer)
 
     # Optional: Clean up temp file
     os.remove(pdf_path)
