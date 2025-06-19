@@ -1,6 +1,8 @@
 streamlit
 langchain
 langchain-community
-sentence-transformers
+sentence-transformers==2.2.2
+transformers==4.40.1
+torch==2.2.0
 faiss-cpu
 pypdf

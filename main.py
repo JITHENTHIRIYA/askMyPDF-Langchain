@@ -3,14 +3,14 @@ import os
 import tempfile
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_community.chat_models import ChatOllama
 from langchain.chains import RetrievalQA
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 st.set_page_config(page_title="AskMyPDF", layout="centered")
-st.title("AskMyPDF - Chat with your PDF (Free & Local)")
-st.markdown("Upload a PDF and ask questions powered by a local LLM via Ollama.")
+st.title("AskMyPDF - Chat with your PDF")
+st.markdown("Upload a PDF and ask questions powered by a local LLM using HuggingFace embeddings.")
 
 uploaded_file = st.file_uploader("Upload or replace a PDF", type=["pdf"])
 
@@ -36,17 +36,21 @@ if uploaded_file is not None:
             splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
             docs = splitter.split_documents(pages)
 
-            embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-            db = FAISS.from_documents(docs, embeddings)
+            embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2",
+                model_kwargs={"device": "cpu"}
+            )
 
+            db = FAISS.from_documents(docs, embeddings)
             llm = ChatOllama(model="llama3")
+
             st.session_state.qa_chain = RetrievalQA.from_chain_type(
                 llm=llm,
                 retriever=db.as_retriever()
             )
 
             st.session_state.pdf_path = new_pdf_path
-            st.success("PDF uploaded and ready!")
+            st.success("✅ PDF uploaded and ready!")
 
 for q, a in st.session_state.chat_history:
     st.markdown(f"<div style='background-color:#f0f2f6;padding:10px;border-radius:10px;margin-bottom:5px'><b>You:</b> {q}</div>", unsafe_allow_html=True)
