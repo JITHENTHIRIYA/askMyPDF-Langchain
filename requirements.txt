@@ -3,6 +3,6 @@ langchain
 langchain-community
 sentence-transformers==2.2.2
 transformers==4.40.1
-torch==2.2.0
+torch>=2.0,<2.6
 faiss-cpu
 pypdf
