@@ -5,7 +5,9 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpoint
-from langchain.chains import RetrievalQA
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
 
 st.set_page_config(page_title="AskMyPDF", layout="centered")
 st.title("AskMyPDF - Chat with your PDF")
@@ -53,9 +55,18 @@ if uploaded_file is not None:
                 max_new_tokens=512,
             )
 
-            st.session_state.qa_chain = RetrievalQA.from_chain_type(
-                llm=llm,
-                retriever=db.as_retriever()
+            prompt = PromptTemplate.from_template(
+                "Use the following context to answer the question.\n\n"
+                "Context: {context}\n\nQuestion: {question}\n\nAnswer:"
+            )
+
+            retriever = db.as_retriever()
+            st.session_state.qa_chain = (
+                {"context": retriever | (lambda docs: "\n\n".join(d.page_content for d in docs)),
+                 "question": RunnablePassthrough()}
+                | prompt
+                | llm
+                | StrOutputParser()
             )
 
             st.session_state.pdf_path = new_pdf_path
@@ -77,7 +88,6 @@ if query:
             st.write(query)
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                response = st.session_state.qa_chain.invoke(query)
-            answer = response["result"] if isinstance(response, dict) and "result" in response else str(response)
+                answer = st.session_state.qa_chain.invoke(query)
             st.write(answer)
         st.session_state.chat_history.append((query, answer))
