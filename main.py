@@ -51,6 +51,7 @@ if uploaded_file is not None:
             llm = HuggingFaceEndpoint(
                 repo_id="mistralai/Mistral-7B-Instruct-v0.3",
                 huggingfacehub_api_token=hf_token,
+                task="text-generation",
                 temperature=0.1,
                 max_new_tokens=512,
             )
