@@ -1,6 +1,8 @@
 streamlit
 langchain
 langchain-community
+langchain-huggingface
+langchain-text-splitters
 sentence-transformers>=2.7.0
 transformers>=4.41.0
 torch>=2.5.0

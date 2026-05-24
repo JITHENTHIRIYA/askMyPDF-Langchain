@@ -2,15 +2,18 @@ import streamlit as st
 import os
 import tempfile
 from langchain_community.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_community.chat_models import ChatOllama
+from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpoint
 from langchain.chains import RetrievalQA
-from langchain_community.embeddings import HuggingFaceEmbeddings
 
 st.set_page_config(page_title="AskMyPDF", layout="centered")
 st.title("AskMyPDF - Chat with your PDF")
-st.markdown("Upload a PDF and ask questions powered by a local LLM using HuggingFace embeddings.")
+st.markdown("Upload a PDF and ask questions powered by HuggingFace.")
+
+hf_token = st.secrets.get("HF_TOKEN", os.environ.get("HF_TOKEN", ""))
+if not hf_token:
+    st.warning("Set **HF_TOKEN** in Streamlit secrets or as an environment variable to enable the LLM.")
 
 uploaded_file = st.file_uploader("Upload or replace a PDF", type=["pdf"])
 
@@ -24,7 +27,7 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 if uploaded_file is not None:
-    with st.spinner("Processing new PDF..."):
+    with st.spinner("Processing PDF..."):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
             tmp_file.write(uploaded_file.read())
             new_pdf_path = tmp_file.name
@@ -42,7 +45,13 @@ if uploaded_file is not None:
             )
 
             db = FAISS.from_documents(docs, embeddings)
-            llm = ChatOllama(model="llama3")
+
+            llm = HuggingFaceEndpoint(
+                repo_id="mistralai/Mistral-7B-Instruct-v0.3",
+                huggingfacehub_api_token=hf_token,
+                temperature=0.1,
+                max_new_tokens=512,
+            )
 
             st.session_state.qa_chain = RetrievalQA.from_chain_type(
                 llm=llm,
@@ -53,21 +62,22 @@ if uploaded_file is not None:
             st.success("✅ PDF uploaded and ready!")
 
 for q, a in st.session_state.chat_history:
-    st.markdown(f"<div style='background-color:#f0f2f6;padding:10px;border-radius:10px;margin-bottom:5px'><b>You:</b> {q}</div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='background-color:#e0ffe0;padding:10px;border-radius:10px;margin-bottom:15px'><b>Bot:</b> {a}</div>", unsafe_allow_html=True)
+    with st.chat_message("user"):
+        st.write(q)
+    with st.chat_message("assistant"):
+        st.write(a)
 
 query = st.chat_input("Ask a question about the current PDF")
 
-if query and st.session_state.qa_chain:
-    with st.spinner("Thinking..."):
-        response = st.session_state.qa_chain.invoke(query)
-
-    if isinstance(response, dict) and "result" in response:
-        answer = response["result"]
+if query:
+    if not st.session_state.qa_chain:
+        st.warning("Please upload a PDF first.")
     else:
-        answer = str(response)
-
-    st.session_state.chat_history.append((query, answer))
-
-    st.markdown(f"<div style='background-color:#f0f2f6;padding:10px;border-radius:10px;margin-bottom:5px'><b>You:</b> {query}</div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='background-color:#e0ffe0;padding:10px;border-radius:10px;margin-bottom:15px'><b>Bot:</b> {answer}</div>", unsafe_allow_html=True)
+        with st.chat_message("user"):
+            st.write(query)
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                response = st.session_state.qa_chain.invoke(query)
+            answer = response["result"] if isinstance(response, dict) and "result" in response else str(response)
+            st.write(answer)
+        st.session_state.chat_history.append((query, answer))
